@@ -1,11 +1,19 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import { useQuery, useMutation, gql } from "@apollo/client";
+import AddOrder from "./components/AddOrder";
+
+export type Order = {
+  id: number;
+  description: string;
+  totalInPence: number;
+};
 
 export type Customer = {
   id: number;
   name: string;
   industry: string;
+  orders: Order[];
 };
 
 const GET_DATA = gql`
@@ -14,6 +22,11 @@ const GET_DATA = gql`
       id
       name
       industry
+      orders {
+        id
+        description
+        totalInPence
+      }
     }
   }
 `;
@@ -53,16 +66,35 @@ function App() {
   });
   return (
     <div>
+      <h1>Customers</h1>
       {error ? <p>Something went wrong</p> : null}
       {loading ? <p>Loading...</p> : null}
 
       {data
         ? data.customers.map((customer: Customer) => {
             return (
-              <p key={customer.id}>{customer.name + " " + customer.industry}</p>
+              <div key={customer.id}>
+                <h2>{customer.name + " (" + customer.industry + ")"}</h2>
+                {customer.orders.map((order: Order) => {
+                  return (
+                    <div key={order.id}>
+                      <p>{order.description}</p>
+                      <p>
+                        Cost: £
+                        {(order.totalInPence / 100).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
+                    </div>
+                  );
+                })}
+                <AddOrder customerId={customer.id} />
+              </div>
             );
           })
         : null}
+      <h3>Add a customer:</h3>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -74,7 +106,7 @@ function App() {
         }}
       >
         <div>
-          <label htmlFor="name">Name</label>
+          <label htmlFor="name">Name </label>
           <input
             id="name"
             type="text"
@@ -84,9 +116,10 @@ function App() {
             }}
           />
         </div>
+        <br />
 
         <div>
-          <label htmlFor="industy">Industry</label>
+          <label htmlFor="industy">Industry </label>
           <input
             id="industry"
             type="text"
@@ -96,7 +129,7 @@ function App() {
             }}
           />
         </div>
-
+        <br />
         <button disabled={createCustomerLoading ? true : false}>
           Add Customer
         </button>
