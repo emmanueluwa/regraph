@@ -1,15 +1,71 @@
-import { useState } from "react";
+import { gql, useMutation } from "@apollo/client";
+import { useEffect, useState } from "react";
 
 export type AppProps = {
   customerId: number;
 };
+
+//get all customers with orders
+const GET_DATA = gql`
+  {
+    customers {
+      id
+      name
+      industry
+      orders {
+        id
+        description
+        totalInPence
+      }
+    }
+  }
+`;
+
+//graphql query
+const CREATE_ORDER = gql`
+  mutation CREATE_ORDER(
+    $description: String!
+    $totalInPence: Int!
+    $customer: ID
+  ) {
+    createOrder(
+      customer: $customer
+      description: $description
+      totalInPence: $totalInPence
+    ) {
+      order {
+        id
+        customer {
+          id
+        }
+        description
+        totalInPence
+      }
+    }
+  }
+`;
 
 export default function AddOrder({ customerId }: AppProps) {
   //has the new order button been click? checking state
   const [active, setActive] = useState(false);
 
   const [description, setDescription] = useState("");
-  const [cost, setCost] = useState(NaN);
+  //TODO: invalid value 25000000000; Int cannot represent non 32-bit signed integer
+  const [totalInPence, setTotalInPence] = useState(NaN);
+
+  //graphql mutation
+  const [createOrder, { loading, error, data }] = useMutation(CREATE_ORDER, {
+    refetchQueries: [{ query: GET_DATA }],
+  });
+
+  //checking for new successful order creation
+  useEffect(() => {
+    if (data) {
+      console.log(data, "DATA!");
+      setDescription("");
+      setTotalInPence(NaN);
+    }
+  }, [data]);
 
   return (
     <div>
@@ -27,7 +83,13 @@ export default function AddOrder({ customerId }: AppProps) {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              console.log(customerId, description, cost);
+              createOrder({
+                variables: {
+                  customer: customerId,
+                  description: description,
+                  totalInPence: totalInPence * 100,
+                },
+              });
             }}
           >
             <div>
@@ -44,13 +106,13 @@ export default function AddOrder({ customerId }: AppProps) {
             <br />
 
             <div>
-              <label htmlFor="cost">Cost: </label>
+              <label htmlFor="totalInPence">Cost: </label>
               <input
-                id="cost"
+                id="totalInPence"
                 type="number"
-                value={isNaN(cost) ? "" : cost}
+                value={isNaN(totalInPence) ? "" : totalInPence}
                 onChange={(e) => {
-                  setCost(parseFloat(e.target.value));
+                  setTotalInPence(parseFloat(e.target.value));
                 }}
               />
             </div>
@@ -62,8 +124,9 @@ export default function AddOrder({ customerId }: AppProps) {
             {createCustomerError ? <p>Error creating customer</p> : null}
             */}
 
-            <button>add order!</button>
+            <button disabled={loading ? true : false}>Add order!</button>
           </form>
+          {error ? <p>Something went wrong</p> : null}
         </div>
       ) : null}
     </div>
